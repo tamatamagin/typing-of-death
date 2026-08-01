@@ -344,23 +344,6 @@
   .lb-row .lb-score { color: #ffd75e; }
   .lb-row .lb-tag { font-size: 11px; color: #888; margin-left: 8px; white-space: nowrap; }
   .lb-empty { color: #555; font-size: 13px; text-align: center; padding: 10px; }
-  .lb-filters { margin-bottom: 10px; }
-  .lb-frow { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 6px; }
-  .lb-fcap { color: #666; font-size: 11px; letter-spacing: 1px; margin-right: 4px; }
-  .lb-fbtn {
-    font-family: inherit;
-    font-size: 12px;
-    letter-spacing: 1px;
-    padding: 4px 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid #444;
-    color: #aaa;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-  .lb-fbtn:hover { border-color: #7ac6ff; color: #fff; }
-  .lb-fbtn.sel { border-color: #7ac6ff; background: rgba(122,198,255,0.18); color: #7ac6ff; }
 </style>
 </head>
 <body>
@@ -411,22 +394,6 @@
       <b>NO HP</b> means death. Good luck.
     </div>
     <div class="lb-title">TOP 10 SURVIVORS</div>
-    <div class="lb-filters">
-      <div class="lb-frow">
-        <span class="lb-fcap">LANG</span>
-        <button class="lb-fbtn sel" data-lb-lang="all">ALL</button>
-        <button class="lb-fbtn" data-lb-lang="english">EN</button>
-        <button class="lb-fbtn" data-lb-lang="cangjie">倉頡</button>
-        <button class="lb-fbtn" data-lb-lang="sucheng">速成</button>
-      </div>
-      <div class="lb-frow">
-        <span class="lb-fcap">DIFF</span>
-        <button class="lb-fbtn sel" data-lb-diff="all">ALL</button>
-        <button class="lb-fbtn" data-lb-diff="easy">EASY</button>
-        <button class="lb-fbtn" data-lb-diff="normal">NORMAL</button>
-        <button class="lb-fbtn" data-lb-diff="hard">HARD</button>
-      </div>
-    </div>
     <div class="leaderboard" id="lbStart"></div>
   </div>
 
@@ -446,22 +413,6 @@
     </div>
     <button class="btn ghost" id="homeBtn">BACK TO HOMEPAGE</button>
     <div class="lb-title compact">TOP 10 SURVIVORS</div>
-    <div class="lb-filters">
-      <div class="lb-frow">
-        <span class="lb-fcap">LANG</span>
-        <button class="lb-fbtn sel" data-lb-lang="all">ALL</button>
-        <button class="lb-fbtn" data-lb-lang="english">EN</button>
-        <button class="lb-fbtn" data-lb-lang="cangjie">倉頡</button>
-        <button class="lb-fbtn" data-lb-lang="sucheng">速成</button>
-      </div>
-      <div class="lb-frow">
-        <span class="lb-fcap">DIFF</span>
-        <button class="lb-fbtn sel" data-lb-diff="all">ALL</button>
-        <button class="lb-fbtn" data-lb-diff="easy">EASY</button>
-        <button class="lb-fbtn" data-lb-diff="normal">NORMAL</button>
-        <button class="lb-fbtn" data-lb-diff="hard">HARD</button>
-      </div>
-    </div>
     <div class="leaderboard" id="lbOver"></div>
   </div>
 
@@ -689,22 +640,19 @@ function renderRows(scores) {
   return rows || '<div class="lb-empty">No survivors yet. Be the first!</div>';
 }
 
-function lbActiveLabel() {
-  const lang = lbLang === 'all' ? 'ALL' : (LANG_LABELS[lbLang] || lbLang);
-  const diff = lbDiff === 'all' ? 'ALL' : (DIFF_LABELS[lbDiff] || lbDiff);
-  return lang + ' &middot; ' + diff;
-}
-
 const LANG_LABELS = { english: 'EN', cangjie: '倉頡', sucheng: '速成' };
 const DIFF_LABELS = { easy: 'EASY', normal: 'NORMAL', hard: 'HARD' };
 
-let lbLang = 'all';
-let lbDiff = 'all';
+function lbActiveLabel() {
+  const lang = LANG_LABELS[language] || language;
+  const diff = DIFF_LABELS[difficulty] || difficulty;
+  return lang + ' &middot; ' + diff;
+}
 
 function filteredScores(scores) {
   return scores
-    .filter(s => lbLang === 'all' || s.language === lbLang)
-    .filter(s => lbDiff === 'all' || s.difficulty === lbDiff)
+    .filter(s => s.language === language)
+    .filter(s => s.difficulty === difficulty)
     .slice(0, 10);
 }
 
@@ -715,11 +663,6 @@ async function renderLeaderboard() {
   const full = head + html;
   lbStart.innerHTML = full;
   lbOver.innerHTML = full;
-}
-
-function renderFilterTabs() {
-  document.querySelectorAll('.lb-fbtn[data-lb-lang]').forEach(b => b.classList.toggle('sel', b.dataset.lbLang === lbLang));
-  document.querySelectorAll('.lb-fbtn[data-lb-diff]').forEach(b => b.classList.toggle('sel', b.dataset.lbDiff === lbDiff));
 }
 
 function showNameOverlay() {
@@ -1238,25 +1181,17 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     difficulty = btn.dataset.diff;
     document.querySelectorAll('.diff-btn').forEach(x => x.classList.toggle('selected', x === btn));
+    renderLeaderboard();
   });
 });
 document.querySelectorAll('.lang-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     language = btn.dataset.lang;
     document.querySelectorAll('.lang-btn').forEach(x => x.classList.toggle('selected', x === btn));
-  });
-});
-
-document.querySelectorAll('.lb-fbtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (btn.dataset.lbLang) lbLang = btn.dataset.lbLang;
-    if (btn.dataset.lbDiff) lbDiff = btn.dataset.lbDiff;
-    renderFilterTabs();
     renderLeaderboard();
   });
 });
 
-renderFilterTabs();
 renderLeaderboard();
 </script>
 </body>
