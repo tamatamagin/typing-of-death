@@ -474,6 +474,15 @@ const CN_WORDS = [
 
 const LIVES = { easy: 8, normal: 5, hard: 5 };
 const MAX_CONTINUES = 3;
+
+// ---- PUBLIC LEADERBOARD (Firebase Firestore) ----
+// Leave empty to keep scores private (localStorage only).
+// After creating your Firebase project, paste the values here:
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyB7DgdhfDDNKaiM9Cy3sNV5qIiWOXMZpUg',
+  projectId: 'typing-of-death'
+};
+const SCORES_COLLECTION = 'scores';
 const WALK_SPEED = 38;        // px per second toward player
 const WALK_INC_PER_WAVE = 9;  // extra speed per wave
 const REACH_PX_RATIO = 0.17;  // zombies are caught once they pass this height (just above the typing bar)
@@ -512,24 +521,89 @@ let runScoreSaved = false;
 
 const STORAGE_KEY = 'tod_scores';
 
-function getScores() {
+function firebaseReady() {
+  return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId;
+}
+
+function getLocalScores() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
   catch (e) { return []; }
 }
 
-function saveScore() {
+function fsUrl(path) {
+  return 'https://firestore.googleapis.com/v1/projects/' +
+    FIREBASE_CONFIG.projectId + '/databases/(default)/documents' + path +
+    '?key=' + FIREBASE_CONFIG.apiKey;
+}
+
+async function fsGetScores() {
+  const url = fsUrl('/:runQuery');
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: SCORES_COLLECTION }],
+      orderBy: [{ field: { fieldPath: 'score' }, direction: 'DESCENDING' }],
+      limit: 10
+    }
+  };
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('firestore read ' + res.status);
+  const rows = await res.json();
+  return rows
+    .filter(r => r.document)
+    .map(r => {
+      const f = r.document.fields;
+      return {
+        name: f.name ? f.name.stringValue : '?',
+        score: f.score ? Number(f.score.integerValue) : 0
+      };
+    })
+    .filter(s => s.score > 0);
+}
+
+async function fsSaveScore(rec) {
+  const url = fsUrl('/' + SCORES_COLLECTION);
+  const body = { fields: {
+    name: { stringValue: rec.name },
+    score: { integerValue: String(rec.score) },
+    wave: { integerValue: String(rec.wave) },
+    difficulty: { stringValue: rec.difficulty },
+    language: { stringValue: rec.language },
+    date: { integerValue: String(rec.date) }
+  } };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error('firestore write ' + res.status);
+}
+
+async function getScores() {
+  if (firebaseReady()) {
+    try { return await fsGetScores(); }
+    catch (e) { console.warn('Firestore unavailable, using local scores', e); }
+  }
+  return getLocalScores().slice(0, 10);
+}
+
+async function saveScore() {
   if (score <= 0) return;
-  const scores = getScores();
-  scores.push({
+  const rec = {
     name: playerName || 'ANONYMOUS',
     score: score,
     wave: wave,
     difficulty: difficulty,
     language: language,
     date: Date.now()
-  });
-  scores.sort((a, b) => b.score - a.score);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(scores.slice(0, 100)));
+  };
+  const local = getLocalScores();
+  local.push(rec);
+  local.sort((a, b) => b.score - a.score);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(local.slice(0, 100)));
+  if (firebaseReady()) {
+    try { await fsSaveScore(rec); }
+    catch (e) { console.warn('Could not upload score', e); }
+  }
 }
 
 function escHtml(s) {
@@ -540,15 +614,19 @@ function escHtml(s) {
     .split('"').join('&quot;');
 }
 
-function renderLeaderboard() {
-  const scores = getScores().slice(0, 10);
+function renderRows(scores) {
   const rows = scores.map((s, i) => {
     const cls = 'lb-row' + (i === 0 ? ' top1' : i === 1 ? ' top2' : i === 2 ? ' top3' : '');
     return '<div class="' + cls + '"><span class="lb-rank">' + (i + 1) + '.</span>' +
       '<span class="lb-name">' + escHtml(s.name) + '</span>' +
       '<span class="lb-score">' + s.score + '</span></div>';
   }).join('');
-  const html = rows || '<div class="lb-empty">No survivors yet. Be the first!</div>';
+  return rows || '<div class="lb-empty">No survivors yet. Be the first!</div>';
+}
+
+async function renderLeaderboard() {
+  const scores = await getScores();
+  const html = renderRows(scores);
   lbStart.innerHTML = html;
   lbOver.innerHTML = html;
 }
@@ -902,9 +980,8 @@ function gameOver() {
   document.getElementById('continueLeft').textContent = continueLeft;
   document.getElementById('continueBtn').disabled = continueLeft <= 0;
   if (continueLeft <= 0) {
-    saveScore();
+    saveScore().then(() => renderLeaderboard());
     runScoreSaved = true;
-    renderLeaderboard();
   }
   gameOverOverlay.style.display = 'flex';
   typedText = '';
@@ -934,9 +1011,8 @@ function continueGame() {
 
 function goHome() {
   if (!runScoreSaved) {
-    saveScore();
     runScoreSaved = true;
-    renderLeaderboard();
+    saveScore().then(() => renderLeaderboard());
   }
   zombies.forEach(z => z.el.remove());
   zombies = [];
