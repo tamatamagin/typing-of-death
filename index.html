@@ -310,26 +310,39 @@
     outline: none;
   }
   .name-field:focus { border-color: #ffd75e; box-shadow: 0 0 12px rgba(255,215,94,0.3); }
-  .lb-title { color: #7ac6ff; font-size: 13px; letter-spacing: 3px; margin: 26px 0 10px; }
+  .lb-title { color: #7ac6ff; font-size: 14px; letter-spacing: 3px; margin: 26px 0 10px; }
   .lb-title.compact { margin-top: 18px; }
   .leaderboard {
-    width: 340px;
-    max-height: 200px;
+    width: 430px;
+    max-height: 300px;
     overflow-y: auto;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.5);
     border: 1px solid #333;
     border-radius: 8px;
     padding: 8px 12px;
     text-align: left;
   }
-  .lb-row { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 4px 6px; color: #ccc; border-radius: 4px; }
+  .lb-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: #777;
+  }
+  .lb-head .lb-active { color: #7ac6ff; }
+  .lb-row { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; padding: 5px 6px; color: #ddd; border-radius: 4px; }
   .lb-row:nth-child(odd) { background: rgba(255,255,255,0.03); }
   .lb-row.top1 { color: #ffd75e; font-weight: bold; }
-  .lb-row.top2 { color: #e8e8e8; font-weight: bold; }
+  .lb-row.top2 { color: #f0f0f0; font-weight: bold; }
   .lb-row.top3 { color: #d4956a; font-weight: bold; }
-  .lb-row .lb-rank { width: 26px; color: #888; }
+  .lb-row .lb-rank { width: 30px; color: #888; }
   .lb-row .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
   .lb-row .lb-score { color: #ffd75e; }
+  .lb-row .lb-tag { font-size: 11px; color: #888; margin-left: 8px; white-space: nowrap; }
   .lb-empty { color: #555; font-size: 13px; text-align: center; padding: 10px; }
   .lb-filters { margin-bottom: 10px; }
   .lb-frow { display: flex; align-items: center; gap: 6px; justify-content: center; margin-bottom: 6px; }
@@ -669,10 +682,17 @@ function renderRows(scores) {
   const rows = scores.map((s, i) => {
     const cls = 'lb-row' + (i === 0 ? ' top1' : i === 1 ? ' top2' : i === 2 ? ' top3' : '');
     return '<div class="' + cls + '"><span class="lb-rank">' + (i + 1) + '.</span>' +
-      '<span class="lb-name">' + escHtml(s.name) + '</span>' +
+      '<span class="lb-name">' + escHtml(s.name) +
+      '<span class="lb-tag">' + (LANG_LABELS[s.language] || '?') + ' / ' + (DIFF_LABELS[s.difficulty] || '?') + '</span></span>' +
       '<span class="lb-score">' + s.score + '</span></div>';
   }).join('');
   return rows || '<div class="lb-empty">No survivors yet. Be the first!</div>';
+}
+
+function lbActiveLabel() {
+  const lang = lbLang === 'all' ? 'ALL' : (LANG_LABELS[lbLang] || lbLang);
+  const diff = lbDiff === 'all' ? 'ALL' : (DIFF_LABELS[lbDiff] || lbDiff);
+  return lang + ' &middot; ' + diff;
 }
 
 const LANG_LABELS = { english: 'EN', cangjie: '倉頡', sucheng: '速成' };
@@ -691,8 +711,10 @@ function filteredScores(scores) {
 async function renderLeaderboard() {
   const scores = await getScores();
   const html = renderRows(filteredScores(scores));
-  lbStart.innerHTML = html;
-  lbOver.innerHTML = html;
+  const head = '<div class="lb-head"><span>TOP 10</span><span class="lb-active">' + lbActiveLabel() + '</span></div>';
+  const full = head + html;
+  lbStart.innerHTML = full;
+  lbOver.innerHTML = full;
 }
 
 function renderFilterTabs() {
