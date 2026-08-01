@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing of Death</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+  }
+  #game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: url('background.jpg') no-repeat center / cover;
+    user-select: none;
+  }
+  #game::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(5,5,10,0.25) 0%, rgba(5,5,10,0.55) 70%, rgba(5,5,10,0.85) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  #moon {
+    position: absolute;
+    top: 40px; left: 60%;
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f0f0e0, #b0b0a0);
+    box-shadow: 0 0 40px 15px rgba(240,240,230,0.35);
+  }
+  .zombie {
+    position: absolute;
+    bottom: 18%;
+    width: auto;
+    height: 170px;
+    transition: bottom 0.5s ease;
+    filter: drop-shadow(0 8px 6px rgba(0,0,0,0.65));
+    transform-origin: bottom center;
+    animation: shambler 1.6s ease-in-out infinite;
+  }
+  .zombie img.zsprite {
+    display: block;
+    height: 100%;
+    width: auto;
+    pointer-events: none;
+    transform-origin: bottom center;
+  }
+  @keyframes shambler {
+    0%, 100% { transform: rotate(-2.5deg); }
+    50% { transform: rotate(2.5deg); }
+  }
+  .zombie .word {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd75e;
+    text-shadow: 0 0 8px rgba(255,180,0,0.7), 2px 2px 0 #000;
+    letter-spacing: 2px;
+    background: rgba(0,0,0,0.55);
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,180,0,0.35);
+  }
+  .zombie .word .done { color: #ff2a2a; }
+  .zombie .word .cn {
+    display: block;
+    font-size: 26px;
+    color: #fff;
+    letter-spacing: 3px;
+    margin-bottom: 2px;
+    text-shadow: 0 0 10px rgba(255,42,42,0.6), 2px 2px 0 #000;
+  }
+  .zombie .word .zcode { display: block; font-size: 15px; letter-spacing: 2px; }
+  .zombie.dying { animation: death 0.45s ease-out forwards; }
+  @keyframes death {
+    0% { transform: scale(1); filter: none; opacity: 1; }
+    30% { transform: scale(1.2) rotate(-15deg); filter: brightness(2); }
+    100% { transform: scale(0.2) translateY(60px); filter: brightness(0.2); opacity: 0; }
+  }
+  .zombie.dead { display: none; }
+  #hud {
+    position: absolute;
+    top: 16px; left: 16px;
+    font-size: 20px;
+    line-height: 1.8;
+    text-shadow: 2px 2px 0 #000;
+    z-index: 5;
+  }
+  #hud .label { color: #888; font-size: 13px; }
+  #hud .score { color: #ffd75e; }
+  #hud .wave { color: #7ac6ff; }
+  #hud .hprow { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  #hud .hpbar {
+    width: 170px; height: 15px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #555;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.8);
+  }
+  #hud .hpfill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(180deg, #8aff8a, #2f8f2f);
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+  #typebar {
+    position: absolute;
+    bottom: 26px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 30px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    color: #ffd75e;
+    text-shadow: 0 0 12px rgba(255,215,94,0.5), 2px 2px 0 #000;
+    background: rgba(0,0,0,0.4);
+    padding: 6px 16px;
+    border-radius: 8px;
+    min-width: 40px;
+    text-align: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #typebar.error { color: #ff2a2a; text-shadow: 0 0 12px rgba(255,42,42,0.6), 2px 2px 0 #000; animation: shakebar 0.2s; }
+  @keyframes shakebar { 0%,100% { transform: translateX(calc(-50% - 0px)); } 25% { transform: translateX(calc(-50% - 8px)); } 75% { transform: translateX(calc(-50% + 8px)); } }
+  #gun {
+    position: absolute;
+    bottom: 34px; left: 50%;
+    width: 47px; height: 90px;
+    margin-left: -23px;
+    transform-origin: 50% 100%;
+    transition: transform 0.12s ease-out;
+    z-index: 6;
+  }
+  #gun .gun-frame {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 100%;
+  }
+  #gun .gun-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.6));
+  }
+  #gun .muzzle {
+    position: absolute;
+    top: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 14px;
+    background: radial-gradient(circle, #fff 0%, #ffd75e 45%, rgba(255,150,0,0) 72%);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #gun .gun-frame.recoil { animation: recoil 0.13s ease-out; }
+  #gun .gun-frame.recoil .muzzle { animation: muzzle 0.13s ease-out; }
+  @keyframes recoil { 0% { transform: translateY(0); } 35% { transform: translateY(-7px); } 100% { transform: translateY(0); } }
+  @keyframes muzzle { 0% { opacity: 1; transform: translateX(-50%) scale(1); } 100% { opacity: 0; transform: translateX(-50%) scale(2); } }
+  .bullet {
+    position: absolute;
+    width: 5px; height: 5px;
+    margin: -2px 0 0 -2px;
+    background: #ffd75e;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ffd75e, 0 0 18px #ffa500;
+    pointer-events: none;
+    z-index: 6;
+  }
+  #startOverlay, #gameOverOverlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,5,10,0.92);
+    z-index: 10;
+    text-align: center;
+  }
+  h1 { font-size: 56px; color: #ff2a2a; text-shadow: 0 0 20px rgba(255,42,42,0.7), 0 0 60px rgba(255,42,42,0.4); letter-spacing: 4px; margin-bottom: 10px; }
+  .sub { color: #888; font-size: 15px; margin-bottom: 40px; }
+  .diff-select { margin-bottom: 34px; }
+  .diff-label { color: #888; font-size: 13px; letter-spacing: 2px; margin-bottom: 12px; }
+  .diff-options { display: flex; gap: 14px; justify-content: center; }
+  .diff-btn {
+    font-family: inherit;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #444;
+    color: #ccc;
+    border-radius: 8px;
+    padding: 12px 18px;
+    cursor: pointer;
+    text-align: center;
+    min-width: 130px;
+    transition: all 0.15s;
+  }
+  .diff-btn .diff-name { display: block; font-size: 18px; letter-spacing: 2px; color: #ffd75e; }
+  .diff-btn .diff-desc { display: block; font-size: 11px; color: #888; margin-top: 6px; line-height: 1.4; }
+  .diff-btn:hover { border-color: #ffd75e; }
+  .diff-btn.selected {
+    border-color: #ff2a2a;
+    background: rgba(255,42,42,0.15);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255,42,42,0.3);
+  }
+  .diff-btn.selected .diff-name { color: #ff2a2a; }
+  .lang-select { margin-bottom: 34px; }
+  .lang-btn {
+    font-family: inherit;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #444;
+    color: #ccc;
+    border-radius: 8px;
+    padding: 14px 18px;
+    cursor: pointer;
+    text-align: center;
+    min-width: 130px;
+    font-size: 16px;
+    letter-spacing: 2px;
+    transition: all 0.15s;
+  }
+  .lang-btn:hover { border-color: #7ac6ff; }
+  .lang-btn.selected {
+    border-color: #7ac6ff;
+    background: rgba(122,198,255,0.15);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(122,198,255,0.3);
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 22px;
+    padding: 14px 44px;
+    background: #ff2a2a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 6px 0 #7a1010, 0 0 25px rgba(255,42,42,0.4);
+    transition: transform 0.05s;
+  }
+  .btn:hover { background: #ff4a4a; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a1010; }
+  .final-score { font-size: 30px; margin: 20px 0; color: #ffd75e; }
+  #fxLayer { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+  .fx {
+    position: absolute;
+    font-size: 22px;
+    font-weight: bold;
+    animation: floatUp 0.8s ease-out forwards;
+    text-shadow: 0 0 8px currentColor;
+  }
+  @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-70px) scale(1.4); } }
+  .tips { margin-top: 30px; color: #555; font-size: 13px; line-height: 2; }
+  .tips b { color: #7ac6ff; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="moon"></div>
+
+  <div id="hud">
+    <div><span class="label">SCORE&nbsp;</span><span class="score" id="score">0</span></div>
+    <div><span class="label">WAVE&nbsp;</span><span class="wave" id="wave">1</span></div>
+    <div class="hprow"><span class="label">HP&nbsp;</span><div class="hpbar" id="hpbar"><div class="hpfill" id="hpfill"></div></div></div>
+  </div>
+
+  <div id="fxLayer"></div>
+
+  <div id="startOverlay">
+    <h1>TYPING OF DEATH</h1>
+    <div class="sub">The dead are rising. The only weapon that works... is your keyboard.</div>
+    <div class="diff-select">
+      <div class="diff-label">CHOOSE DIFFICULTY</div>
+      <div class="diff-options">
+        <button class="diff-btn" data-diff="easy">
+          <span class="diff-name">EASY</span>
+          <span class="diff-desc">8 HP<br>wrong typing doesn't hurt</span>
+        </button>
+        <button class="diff-btn selected" data-diff="normal">
+          <span class="diff-name">NORMAL</span>
+          <span class="diff-desc">5 HP<br>wrong typing doesn't hurt</span>
+        </button>
+        <button class="diff-btn" data-diff="hard">
+          <span class="diff-name">HARD</span>
+          <span class="diff-desc">5 HP<br>wrong typing hurts</span>
+        </button>
+      </div>
+    </div>
+    <div class="lang-select">
+      <div class="diff-label">CHOOSE LANGUAGE</div>
+      <div class="diff-options">
+        <button class="lang-btn selected" data-lang="english">ENGLISH</button>
+        <button class="lang-btn" data-lang="cangjie">中文 &middot; 倉頡</button>
+        <button class="lang-btn" data-lang="sucheng">中文 &middot; 速成</button>
+      </div>
+    </div>
+    <button class="btn" id="startBtn">SURVIVE</button>
+    <div class="tips">
+      <b>TYPE</b> any zombie's word in any order to destroy them.<br>
+      <b>中文</b> zombies show their characters &mdash; type the code below them.<br>
+      <b>WRONG</b> letters shake the bar &mdash; and on HARD they cost HP.<br>
+      <b>NO HP</b> means death. Good luck.
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" style="display:none">
+    <h1>YOU DIED</h1>
+    <div class="final-score">Score: <span id="finalScore">0</span></div>
+    <button class="btn" id="restartBtn">REVIVE</button>
+  </div>
+
+  <div id="gun">
+    <div class="gun-frame">
+      <img class="gun-img" src="gun-up.png" alt="">
+      <div class="muzzle"></div>
+    </div>
+  </div>
+
+  <div id="typebar"></div>
+</div>
+
+<script>
+const ZOMBIE_SPRITES = ['zombie-1.png', 'zombie-2.png', 'zombie-3.png'];
+
+const WORDS = [
+  "ZOMBIE","DEATH","BLOOD","GRAVE","CORPSE","UNDEAD","BRAIN","SKULL","GHOUL","RIP",
+  "CEMETERY","NIGHT","DARK","BONE","COFFIN","SPIRIT","CURSE","CRYPT","HOWL","HUNT",
+  "FEAR","SHADOW","MAGGOT","STENCH","TOMB","EVIL","SLASH","STAB","FIRE","ACID",
+  "POISON","SMOKE","STORM","THUNDER","VENOM","WOLF","BAT","SPIDER","RAT","SNAKE",
+  "SILENCE","ECHO","MOON","CHILL","FROST","CHAOS","DOOM","HELL","GATE","DUSK",
+  "DAWN","SCREAM","WHISPER","ROT","FLESH","IVORY","JADE","ONYX","RUNE","SIGIL",
+  "APOCALYPSE","HORROR","PLAGUE","VIRUS","MUTANT","HUSK","WRETCH","VERMIN","GRIM","MASK",
+  "BLOODMOON","NECRO","ABYSS","VOID","NIGHTMARE","GALLOWS","HEARSE","PALLID","MORTAL","GHAST",
+  "PHANTOM","BANSHEE","WRAITH","HARROW","MOURN","SORROW","LAMENT","CRUMBLE","CINDER","BLAZE",
+  "TEMPEST","AVALANCHE","QUAKE","BURIAL","EULOGY","PRAYER","REQUIEM","ORACLE","MIRROR","CANDLE"
+];
+
+const CN_CODES = {
+  '死':'MNP','鬼':'HI','血':'HBT','骨':'BBB','墓':'TAKG','魔':'IDHI','咒':'RRHN','暗':'AYTA','夜':'YONK','魂':'MIHI',
+  '殭':'MNMWM','屍':'SMNP','妖':'VHK','怪':'PEG','夢':'TWLN','恐':'MNP','殺':'KCHNE','刀':'SH','火':'F','影':'AFHHH',
+  '月':'B','眼':'BUAV','頭':'MTMBC','毒':'QMWYI','疫':'KHNE','黑':'WGF','白':'HA','紅':'VFM','灰':'KF','綠':'VFVNE',
+  '腐':'IIOBO','臭':'HUIK','墳':'GJTC','棺':'DJRR','哭':'RRIK','怕':'PHA','狼':'KHIAV','蛇':'LIJP','巫':'MOO','幽':'UVII',
+  '冥':'BAYC','骸':'BBYVO','詛':'YRBM','邪':'MHNL','怨':'NUP','爪':'HLO','牙':'MVDH'
+};
+
+const CN_WORDS = [
+  '死','鬼','血','骨','墓','魔','咒','暗','夜','魂',
+  '殭','屍','妖','怪','夢','恐','殺','刀','火','影',
+  '月','眼','頭','毒','疫','黑','白','紅','灰','綠',
+  '腐','臭','墳','棺','哭','怕','狼','蛇','巫','幽',
+  '冥','骸','詛','邪','怨','爪','牙',
+  '殭屍','鬼魂','妖怪','魔咒','黑暗','墳墓','白骨','怨魂','夜魔','巫鬼',
+  '詛咒','邪魔','骨灰','血月','幽冥','蛇妖','狼爪','骸骨','黑死','紅眼',
+  '屍骸','夜哭','鬼火','怪物','魔影','鬼影','黑影','血咒','夢魔','血牙'
+];
+
+const LIVES = { easy: 8, normal: 5, hard: 5 };
+const WALK_SPEED = 38;        // px per second toward player
+const WALK_INC_PER_WAVE = 9;  // extra speed per wave
+const REACH_PX_RATIO = 0.17;  // zombies are caught once they pass this height (just above the typing bar)
+const MAX_WORDS_ACTIVE = 6;
+const SPAWN_BASE_MS = 3800;
+const SPAWN_DECAY_PER_WAVE = 250;
+const SPAWN_MIN_MS = 1100;
+const WORD_POOL_SIZE = 9;     // words are up to this many chars (scale difficulty)
+
+const game = document.getElementById('game');
+const fxLayer = document.getElementById('fxLayer');
+const typebar = document.getElementById('typebar');
+const scoreEl = document.getElementById('score');
+const waveEl = document.getElementById('wave');
+const startOverlay = document.getElementById('startOverlay');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+
+let zombies = [];
+let score = 0;
+let lives = LIVES.normal;
+let wave = 1;
+let running = false;
+let difficulty = 'normal';
+let language = 'english';
+let spawnTimer = null;
+let animFrame = null;
+let lastTs = 0;
+let typedText = '';       // letters typed so far
+
+function updateTypebar() {
+  typebar.textContent = typedText || '';
+}
+
+// ---------- SOUND ----------
+let audioCtx = null;
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, dur, type = 'sine', vol = 0.18, when = 0, slideTo = null) {
+  const ctx = ac();
+  const t0 = ctx.currentTime + when;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+function noise(dur, vol = 0.25, when = 0) {
+  const ctx = ac();
+  const t0 = ctx.currentTime + when;
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 1200;
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t0);
+}
+const sfx = {
+  moan() {
+    const ctx = ac();
+    const t0 = ctx.currentTime;
+    const base = 150 + Math.random() * 70;
+    const mk = (off) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(base * off, t0);
+      o.frequency.exponentialRampToValueAtTime(70 * off, t0 + 0.8);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 4 + Math.random() * 3;
+      const lg = ctx.createGain();
+      lg.gain.value = 9;
+      lfo.connect(lg).connect(o.frequency);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(0.16, t0 + 0.12);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass'; f.frequency.value = 550;
+      o.connect(f).connect(g).connect(ctx.destination);
+      o.start(t0); o.stop(t0 + 0.95);
+      lfo.start(t0); lfo.stop(t0 + 0.95);
+    };
+    mk(1);
+    mk(1.04);
+  },
+  correct(){ tone(520, 0.04, 'triangle', 0.07); },
+  wrong() { tone(140, 0.16, 'sawtooth', 0.22, 0, 70); noise(0.15, 0.18); },
+  kill() {
+    const ctx = ac();
+    const t0 = ctx.currentTime;
+    const len = Math.floor(ctx.sampleRate * 0.16);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 700;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.5, t0);
+    ng.gain.exponentialRampToValueAtTime(0.001, t0 + 0.16);
+    src.connect(hp).connect(ng).connect(ctx.destination);
+    src.start(t0);
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(160, t0);
+    o.frequency.exponentialRampToValueAtTime(45, t0 + 0.13);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.4, t0);
+    og.gain.exponentialRampToValueAtTime(0.001, t0 + 0.15);
+    o.connect(og).connect(ctx.destination);
+    o.start(t0); o.stop(t0 + 0.16);
+  },
+  hurt()  { tone(110, 0.4, 'sawtooth', 0.25, 0, 45); noise(0.3, 0.3); },
+  wave()  { tone(440, 0.12, 'square', 0.15); tone(587, 0.12, 'square', 0.15, 0.13); tone(880, 0.2, 'square', 0.15, 0.26); },
+  start() { tone(330, 0.1, 'triangle', 0.16); tone(440, 0.1, 'triangle', 0.16, 0.1); tone(660, 0.2, 'triangle', 0.16, 0.2); },
+  over()  { tone(330, 0.5, 'sawtooth', 0.2, 0, 55); tone(220, 0.7, 'sawtooth', 0.2, 0.2, 45); noise(0.8, 0.2, 0.1); }
+};
+
+// ---------- TERRIBLE BACKGROUND MUSIC ----------
+const music = {
+  on: false, timer: null, beat: 0, drone: null,
+  seq: [110, 0, 130.8, 0, 98, 0, 130.8, 0, 87.3, 0, 130.8, 98, 110, 92.5, 103.8, 0],
+  start() {
+    if (this.on) return;
+    this.on = true;
+    this.beat = 0;
+    this.droneStart();
+    this.timer = setInterval(() => this.tick(), 300);
+  },
+  stop() {
+    this.on = false;
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    this.droneStop();
+  },
+  droneStart() {
+    const ctx = ac();
+    const mk = (freq, gain) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = freq;
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass'; f.frequency.value = 120;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      o.connect(f).connect(g).connect(ctx.destination);
+      o.start();
+      return o;
+    };
+    this.drone = [mk(55, 0.07), mk(55.6, 0.07), mk(82.5, 0.03)];
+  },
+  droneStop() {
+    if (this.drone) { this.drone.forEach(o => { try { o.stop(); } catch (e) {} }); this.drone = null; }
+  },
+  tick() {
+    if (!this.on) return;
+    const ctx = ac();
+    const f = this.seq[this.beat % this.seq.length];
+    this.beat++;
+    if (f > 0) {
+      const play = (freq, detune, type, vol, dur) => {
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.frequency.value = freq;
+        o.detune.value = detune;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+        o.connect(g).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + dur + 0.05);
+      };
+      play(f, -14, 'triangle', 0.13, 1.5);
+      play(f, 16, 'triangle', 0.13, 1.5);
+      play(f * 0.5, 4, 'sawtooth', 0.07, 1.5);
+    }
+    if (Math.random() < 0.13) tone(500 + Math.random() * 900, 0.35, 'square', 0.05, 0, 300 + Math.random() * 300);
+    if (Math.random() < 0.06) noise(0.4, 0.12);
+  }
+};
+
+function wordCode(word) {
+  if (language === 'english') return word;
+  let c = '';
+  for (const ch of word) {
+    const full = CN_CODES[ch] || '';
+    c += language === 'cangjie' ? full : (full.slice(0, 1) + full.slice(-1));
+  }
+  return c;
+}
+
+function pickWord() {
+  const isCn = language !== 'english';
+  const pool = isCn ? CN_WORDS : WORDS;
+  let used = new Set(zombies.map(z => z.code));
+  let candidates;
+  if (isCn) {
+    const maxLen = language === 'cangjie'
+      ? Math.min(4 + Math.floor(wave / 2), 9)
+      : Math.min(2 + Math.floor(wave / 2), 6);
+    candidates = pool.filter(w => wordCode(w).length <= maxLen);
+  } else {
+    candidates = pool.filter(w => w.length <= Math.min(3 + Math.floor(wave / 2), 12));
+  }
+  candidates = candidates.filter(w => !used.has(wordCode(w)));
+  if (candidates.length === 0) candidates = pool;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function spawnZombie() {
+  if (zombies.length >= MAX_WORDS_ACTIVE) return;
+  const word = pickWord();
+  const code = wordCode(word);
+  const el = document.createElement('div');
+  el.className = 'zombie';
+  const img = document.createElement('img');
+  img.className = 'zsprite';
+  img.src = ZOMBIE_SPRITES[Math.floor(Math.random() * ZOMBIE_SPRITES.length)];
+  img.alt = '';
+  const wordEl = document.createElement('div');
+  wordEl.className = 'word';
+  el.appendChild(img);
+  el.appendChild(wordEl);
+  wordEl.innerHTML = '';
+  if (language !== 'english') {
+    const cn = document.createElement('span');
+    cn.className = 'cn';
+    cn.textContent = word;
+    wordEl.appendChild(cn);
+  }
+  const codeEl = document.createElement('span');
+  codeEl.className = 'zcode';
+  for (const ch of code) {
+    const s = document.createElement('span');
+    s.className = 'cl';
+    s.textContent = ch;
+    codeEl.appendChild(s);
+  }
+  wordEl.appendChild(codeEl);
+  el.style.left = (8 + Math.random() * 80) + '%';
+  const z = {
+    el, word, code, typed: 0,
+    speed: WALK_SPEED + (wave - 1) * WALK_INC_PER_WAVE + Math.random() * 8,
+    pos: game.clientHeight * (0.55 + Math.random() * 0.30)
+  };
+  z.el.style.bottom = z.pos + 'px';
+  zombies.push(z);
+  game.appendChild(el);
+  sfx.moan();
+}
+
+function refreshHighlights() {
+  for (const z of zombies) {
+    const done = z.code.startsWith(typedText) ? typedText.length : 0;
+    z.typed = done;
+    z.el.querySelectorAll('.word .cl').forEach((s, i) => s.classList.toggle('done', i < done));
+  }
+}
+
+function revalidate() {
+  if (typedText && !zombies.some(z => z.code.startsWith(typedText))) typedText = '';
+  refreshHighlights();
+  updateTypebar();
+}
+
+function killZombie(z, pts) {
+  zombies = zombies.filter(x => x !== z);
+  revalidate();
+  fireGun(z, pts);
+}
+
+function fireGun(z, pts) {
+  const gun = document.getElementById('gun');
+  const frame = gun.querySelector('.gun-frame');
+  const g = gun.getBoundingClientRect();
+  const gx = g.left + g.width / 2;
+  const gy = g.top + g.height / 2;
+  const r = z.el.getBoundingClientRect();
+  const zx = r.left + r.width / 2;
+  const zy = r.top + r.height / 2;
+  const ang = Math.atan2(zx - gx, -(zy - gy)) * 180 / Math.PI;
+  gun.style.transform = 'rotate(' + ang + 'deg)';
+  setTimeout(() => { gun.style.transform = 'rotate(0deg)'; }, 500);
+
+  frame.classList.remove('recoil');
+  void frame.offsetWidth;
+  frame.classList.add('recoil');
+  sfx.kill();
+
+  const b = document.createElement('div');
+  b.className = 'bullet';
+  b.style.left = gx + 'px';
+  b.style.top = gy + 'px';
+  fxLayer.appendChild(b);
+  b.style.transition = 'transform 0.13s linear';
+  requestAnimationFrame(() => {
+    b.style.transform = 'translate(' + (zx - gx) + 'px,' + (zy - gy) + 'px)';
+  });
+  b.addEventListener('transitionend', () => {
+    b.remove();
+    z.el.classList.add('dying');
+    setTimeout(() => z.el.classList.add('dead'), 450);
+    spawnFx(z.el, '+' + pts, '#ffd75e');
+  });
+}
+
+function spawnFx(el, text, color) {
+  const fx = document.createElement('div');
+  fx.className = 'fx';
+  fx.style.color = color;
+  fx.textContent = text;
+  const r = el.getBoundingClientRect();
+  fx.style.left = (r.left + r.width / 2 - 20) + 'px';
+  fx.style.top = (r.top + 10) + 'px';
+  fxLayer.appendChild(fx);
+  setTimeout(() => fx.remove(), 800);
+}
+
+function loseLife() {
+  lives--;
+  renderLives();
+  if (lives <= 0) gameOver();
+}
+
+function damagePlayer() {
+  typebar.classList.add('error');
+  setTimeout(() => typebar.classList.remove('error'), 200);
+  sfx.wrong();
+  if (difficulty === 'hard') loseLife();
+}
+
+function renderLives() {
+  const pct = Math.max(0, lives / LIVES[difficulty] * 100);
+  const fill = document.getElementById('hpfill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 60
+    ? 'linear-gradient(180deg, #8aff8a, #2f8f2f)'
+    : pct > 30
+      ? 'linear-gradient(180deg, #ffd75e, #cc8a00)'
+      : 'linear-gradient(180deg, #ff6b6b, #9a1f1f)';
+}
+
+function gameOver() {
+  running = false;
+  if (spawnTimer) clearTimeout(spawnTimer);
+  if (animFrame) cancelAnimationFrame(animFrame);
+  document.getElementById('finalScore').textContent = score;
+  gameOverOverlay.style.display = 'flex';
+  typedText = '';
+  updateTypebar();
+  sfx.over();
+  music.stop();
+}
+
+function startGame() {
+  zombies.forEach(z => z.el.remove());
+  zombies = [];
+  score = 0;
+  lives = LIVES[difficulty];
+  wave = 1;
+  scoreEl.textContent = 0;
+  waveEl.textContent = 1;
+  renderLives();
+  startOverlay.style.display = 'none';
+  gameOverOverlay.style.display = 'none';
+  typedText = '';
+  updateTypebar();
+  running = true;
+  lastTs = performance.now();
+  scheduleSpawn();
+  animFrame = requestAnimationFrame(loop);
+  sfx.start();
+  music.start();
+}
+
+function scheduleSpawn() {
+  if (!running) return;
+  spawnZombie();
+  const delay = Math.max(SPAWN_MIN_MS, SPAWN_BASE_MS - (wave - 1) * SPAWN_DECAY_PER_WAVE);
+  spawnTimer = setTimeout(scheduleSpawn, delay + Math.random() * 900);
+}
+
+function loop(ts) {
+  if (!running) return;
+  const dt = Math.min(50, ts - lastTs);
+  lastTs = ts;
+
+  const reach = game.clientHeight * REACH_PX_RATIO;
+  const reached = [];
+  for (const z of zombies) {
+    z.pos -= (z.speed * dt) / 1000;
+    if (z.pos <= reach) {
+      reached.push(z);
+    } else {
+      z.el.style.bottom = z.pos + 'px';
+    }
+  }
+  for (const z of reached) {
+    z.el.remove();
+    zombies = zombies.filter(x => x !== z);
+    revalidate();
+    spawnFx(z.el, 'DAMAGE!', '#ff2a2a');
+    sfx.hurt();
+    loseLife();
+    if (!running) return;
+  }
+
+  if (running) animFrame = requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Backspace') {
+    if (running && typedText.length > 0) {
+      e.preventDefault();
+      typedText = typedText.slice(0, -1);
+      refreshHighlights();
+      updateTypebar();
+    }
+    return;
+  }
+  const ch = e.key.toUpperCase();
+  if (ch.length !== 1 || ch < 'A' || ch > 'Z') return;
+  if (!running || zombies.length === 0) return;
+  e.preventDefault();
+  const next = typedText + ch;
+  const matches = zombies.filter(z => z.code.startsWith(next));
+  if (matches.length === 0) {
+    typedText = '';
+    refreshHighlights();
+    damagePlayer();
+    updateTypebar();
+    return;
+  }
+  typedText = next;
+  refreshHighlights();
+  sfx.correct();
+  updateTypebar();
+  const completed = matches.filter(z => z.code === typedText);
+  for (const z of completed) {
+    const pts = 100 + wordBonus(z.code);
+    score += pts;
+    scoreEl.textContent = score;
+    killZombie(z, pts);
+    waveUp();
+  }
+});
+
+function wordBonus(code) {
+  const n = code.length;
+  return n >= 9 ? 250 : n >= 6 ? 150 : 50;
+}
+
+function waveUp() {
+  if (score >= wave * 600) {
+    wave++;
+    waveEl.textContent = wave;
+    spawnFx(game, 'WAVE ' + wave, '#7ac6ff');
+    sfx.wave();
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    difficulty = btn.dataset.diff;
+    document.querySelectorAll('.diff-btn').forEach(x => x.classList.toggle('selected', x === btn));
+  });
+});
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    language = btn.dataset.lang;
+    document.querySelectorAll('.lang-btn').forEach(x => x.classList.toggle('selected', x === btn));
+  });
+});
+</script>
+</body>
+</html>
