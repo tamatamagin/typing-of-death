@@ -322,18 +322,6 @@
     padding: 8px 12px;
     text-align: left;
   }
-  .lb-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #333;
-    padding-bottom: 6px;
-    margin-bottom: 6px;
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: #777;
-  }
-  .lb-head .lb-active { color: #7ac6ff; }
   .lb-row { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; padding: 5px 6px; color: #ddd; border-radius: 4px; }
   .lb-row:nth-child(odd) { background: rgba(255,255,255,0.03); }
   .lb-row.top1 { color: #ffd75e; font-weight: bold; }
@@ -643,12 +631,6 @@ function renderRows(scores) {
 const LANG_LABELS = { english: 'EN', cangjie: '倉頡', sucheng: '速成' };
 const DIFF_LABELS = { easy: 'EASY', normal: 'NORMAL', hard: 'HARD' };
 
-function lbActiveLabel() {
-  const lang = LANG_LABELS[language] || language;
-  const diff = DIFF_LABELS[difficulty] || difficulty;
-  return lang + ' &middot; ' + diff;
-}
-
 function filteredScores(scores) {
   return scores
     .filter(s => s.language === language)
@@ -659,10 +641,8 @@ function filteredScores(scores) {
 async function renderLeaderboard() {
   const scores = await getScores();
   const html = renderRows(filteredScores(scores));
-  const head = '<div class="lb-head"><span>TOP 10</span><span class="lb-active">' + lbActiveLabel() + '</span></div>';
-  const full = head + html;
-  lbStart.innerHTML = full;
-  lbOver.innerHTML = full;
+  lbStart.innerHTML = html;
+  lbOver.innerHTML = html;
 }
 
 function showNameOverlay() {
