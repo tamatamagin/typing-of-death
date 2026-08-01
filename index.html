@@ -257,6 +257,19 @@
   }
   .btn:hover { background: #ff4a4a; }
   .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a1010; }
+  .btn.ghost {
+    background: transparent;
+    color: #ccc;
+    border: 1px solid #666;
+    box-shadow: none;
+    font-size: 16px;
+    padding: 12px 36px;
+    margin-top: 18px;
+  }
+  .btn.ghost:hover { background: rgba(255,255,255,0.08); border-color: #ffd75e; color: #ffd75e; }
+  .btn:disabled { background: #666; box-shadow: 0 6px 0 #333; cursor: not-allowed; opacity: 0.6; }
+  .continue-box { margin: 10px 0; }
+  .continue-label { color: #888; font-size: 13px; letter-spacing: 2px; margin-bottom: 12px; }
   .final-score { font-size: 30px; margin: 20px 0; color: #ffd75e; }
   #fxLayer { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
   .fx {
@@ -323,7 +336,11 @@
   <div id="gameOverOverlay" style="display:none">
     <h1>YOU DIED</h1>
     <div class="final-score">Score: <span id="finalScore">0</span></div>
-    <button class="btn" id="restartBtn">REVIVE</button>
+    <div class="continue-box">
+      <div class="continue-label">CONTINUES LEFT: <span id="continueLeft">3</span></div>
+      <button class="btn" id="continueBtn">CONTINUE</button>
+    </div>
+    <button class="btn ghost" id="homeBtn">BACK TO HOMEPAGE</button>
   </div>
 
   <div id="gun">
@@ -349,7 +366,17 @@ const WORDS = [
   "APOCALYPSE","HORROR","PLAGUE","VIRUS","MUTANT","HUSK","WRETCH","VERMIN","GRIM","MASK",
   "BLOODMOON","NECRO","ABYSS","VOID","NIGHTMARE","GALLOWS","HEARSE","PALLID","MORTAL","GHAST",
   "PHANTOM","BANSHEE","WRAITH","HARROW","MOURN","SORROW","LAMENT","CRUMBLE","CINDER","BLAZE",
-  "TEMPEST","AVALANCHE","QUAKE","BURIAL","EULOGY","PRAYER","REQUIEM","ORACLE","MIRROR","CANDLE"
+  "TEMPEST","AVALANCHE","QUAKE","BURIAL","EULOGY","PRAYER","REQUIEM","ORACLE","MIRROR","CANDLE",
+  "APPLE","BREAD","RICE","NOODLE","BANANA","GRAPE","MELON","PEACH","MANGO","LEMON",
+  "CHERRY","STRAWBERRY","WATERMELON","PINEAPPLE","ORANGE","PEAR","BERRY","RAISIN","PUMPKIN","TOMATO",
+  "POTATO","CABBAGE","CARROT","ONION","GARLIC","GINGER","BROCCOLI","MUSHROOM","CORN","BEAN",
+  "CHICKEN","BEEF","PORK","FISH","SHRIMP","CRAB","DUCK","EGG","CHEESE","YOGURT",
+  "MILK","JUICE","COFFEE","TEA","SODA","LEMONADE","SMOOTHIE","ICECREAM","CAKE","COOKIE",
+  "CANDY","CHOCOLATE","HONEY","SUGAR","SALT","PEPPER","SOY","VINEGAR","BUTTER","BISCUIT",
+  "HAMBURGER","PIZZA","SANDWICH","PASTA","STEAK","SALAD","SOUP","PORRIDGE","TOFU","SUSHI",
+  "BREAKFAST","LUNCH","DINNER","SNACK","DESSERT","MENU","RESTAURANT","MARKET","SUPERMARKET","STORE",
+  "SHOP","MALL","PRICE","SALE","CASH","PAY","CART","BASKET","COUPON","RECEIPT",
+  "BARGAIN","CHEAP","EXPENSIVE","WATER","HUNGRY","THIRSTY","TASTY","DELICIOUS","SPICY","FRESH"
 ];
 
 const CN_CODES = {
@@ -357,7 +384,16 @@ const CN_CODES = {
   '殭':'MNMWM','屍':'SMNP','妖':'VHK','怪':'PEG','夢':'TWLN','恐':'MNP','殺':'KCHNE','刀':'SH','火':'F','影':'AFHHH',
   '月':'B','眼':'BUAV','頭':'MTMBC','毒':'QMWYI','疫':'KHNE','黑':'WGF','白':'HA','紅':'VFM','灰':'KF','綠':'VFVNE',
   '腐':'IIOBO','臭':'HUIK','墳':'GJTC','棺':'DJRR','哭':'RRIK','怕':'PHA','狼':'KHIAV','蛇':'LIJP','巫':'MOO','幽':'UVII',
-  '冥':'BAYC','骸':'BBYVO','詛':'YRBM','邪':'MHNL','怨':'NUP','爪':'HLO','牙':'MVDH'
+  '冥':'BAYC','骸':'BBYVO','詛':'YRBM','邪':'MHNL','怨':'NUP','爪':'HLO','牙':'MVDH',
+  '麵':'JNMWL','粥':'NFMN','湯':'EAMH','汁':'EJ','包':'PRU','餃':'OIYCK','蝦':'LIRYE','蟹':'NQLMI','雞':'BKOG','鴨':'WLHAF',
+  '豬':'MOJKA','鹽':'SWBT','油':'ELW','米':'FD','粉':'FDCSH','餅':'OITT','奶':'VNHS','咖':'RKSR','啡':'RLMY','酒':'EMCW',
+  '飲':'OINO','店':'IYR','商':'YCBR','價':'OMWC','貴':'LMBUC','平':'MFJ','貨':'OPBUC','袋':'OPYHV','衣':'YHV','鞋':'TJGG',
+  '帽':'LBABU','褲':'LIJJ','裙':'LSKR','味':'RJD','酸':'MWICE','辣':'YJDL','鹹':'YWIHR','香':'HDA','飽':'OIPRU','餓':'OIHQI',
+  '杯':'DMF','碗':'MRJNU','碟':'MRPTD','叉':'EI','匙':'AOP','場':'GAMH',
+  '炒':'FFH','鮮':'NFTQ','巴':'AU','食':'OIAV','餐':'YEOIV','午':'OJ','點':'WFYR','料':'FDYJ','超':'GOSHR','便':'OMLK',
+  '宜':'JBM','重':'HJWG','物':'HQPHH','服':'BSLE','購':'BCTTB','筷':'HPDK',
+  '子':'ND','市':'YLB','心':'P','早':'AJ','晚':'ANAU','果':'WD','水':'E','海':'EOWY','牛':'HQ','甜':'HM',
+  '羊':'TQ','肉':'OBO','茶':'TOD','菜':'TBD','蛋':'NOLMI','買':'WLBUC','賣':'GWLC','錢':'CII','飯':'OIHE','魚':'NWF'
 };
 
 const CN_WORDS = [
@@ -368,10 +404,16 @@ const CN_WORDS = [
   '冥','骸','詛','邪','怨','爪','牙',
   '殭屍','鬼魂','妖怪','魔咒','黑暗','墳墓','白骨','怨魂','夜魔','巫鬼',
   '詛咒','邪魔','骨灰','血月','幽冥','蛇妖','狼爪','骸骨','黑死','紅眼',
-  '屍骸','夜哭','鬼火','怪物','魔影','鬼影','黑影','血咒','夢魔','血牙'
+  '屍骸','夜哭','鬼火','怪物','魔影','鬼影','黑影','血咒','夢魔','血牙',
+  '麵包','雞蛋','牛奶','咖啡','紅茶','綠茶','湯麵','炒飯','水餃','白飯',
+  '豬肉','雞肉','牛肉','羊肉','魚肉','海鮮','鹽巴','食油','甜味','酸味',
+  '辣味','鹹味','香味','早餐','午餐','晚餐','點心','飲料','果汁','飯店',
+  '商店','超市','市場','價錢','便宜','貴重','貨物','袋子','衣服','鞋子',
+  '帽子','褲子','裙子','購物','買菜','賣場','茶匙','湯碗','碟子','筷子'
 ];
 
 const LIVES = { easy: 8, normal: 5, hard: 5 };
+const MAX_CONTINUES = 3;
 const WALK_SPEED = 38;        // px per second toward player
 const WALK_INC_PER_WAVE = 9;  // extra speed per wave
 const REACH_PX_RATIO = 0.17;  // zombies are caught once they pass this height (just above the typing bar)
@@ -396,6 +438,7 @@ let wave = 1;
 let running = false;
 let difficulty = 'normal';
 let language = 'english';
+let continueLeft = MAX_CONTINUES;
 let spawnTimer = null;
 let animFrame = null;
 let lastTs = 0;
@@ -734,10 +777,42 @@ function gameOver() {
   if (spawnTimer) clearTimeout(spawnTimer);
   if (animFrame) cancelAnimationFrame(animFrame);
   document.getElementById('finalScore').textContent = score;
+  document.getElementById('continueLeft').textContent = continueLeft;
+  document.getElementById('continueBtn').disabled = continueLeft <= 0;
   gameOverOverlay.style.display = 'flex';
   typedText = '';
   updateTypebar();
   sfx.over();
+  music.stop();
+}
+
+function continueGame() {
+  if (continueLeft <= 0) return;
+  continueLeft--;
+  document.getElementById('continueLeft').textContent = continueLeft;
+  zombies.forEach(z => z.el.remove());
+  zombies = [];
+  lives = LIVES[difficulty];
+  renderLives();
+  gameOverOverlay.style.display = 'none';
+  typedText = '';
+  updateTypebar();
+  running = true;
+  lastTs = performance.now();
+  scheduleSpawn();
+  animFrame = requestAnimationFrame(loop);
+  sfx.start();
+  music.start();
+}
+
+function goHome() {
+  zombies.forEach(z => z.el.remove());
+  zombies = [];
+  running = false;
+  typedText = '';
+  updateTypebar();
+  gameOverOverlay.style.display = 'none';
+  startOverlay.style.display = 'flex';
   music.stop();
 }
 
@@ -747,6 +822,8 @@ function startGame() {
   score = 0;
   lives = LIVES[difficulty];
   wave = 1;
+  continueLeft = MAX_CONTINUES;
+  document.getElementById('continueLeft').textContent = continueLeft;
   scoreEl.textContent = 0;
   waveEl.textContent = 1;
   renderLives();
@@ -850,7 +927,8 @@ function waveUp() {
 }
 
 document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('restartBtn').addEventListener('click', startGame);
+document.getElementById('continueBtn').addEventListener('click', continueGame);
+document.getElementById('homeBtn').addEventListener('click', goHome);
 document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     difficulty = btn.dataset.diff;
